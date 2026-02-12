@@ -2,3 +2,9 @@
 .env.*
 *.key
 *.pem
+
+# ESP-IDF / PlatformIO artifacts
+build/
+.sdkconfig.old
+.vscode/
+.pio/
