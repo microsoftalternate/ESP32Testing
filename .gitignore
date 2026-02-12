@@ -8,3 +8,7 @@ build/
 .sdkconfig.old
 .vscode/
 .pio/
+
+# Python cache artifacts
+__pycache__/
+*.pyc

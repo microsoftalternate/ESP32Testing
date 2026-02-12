@@ -30,6 +30,7 @@ This project uses lightweight role-based agents so future contributors can pick 
 - Request external dependencies before relying on them.
 - Track progress with git commits.
 - Do not ship unverified behavior.
+- If auto-invocation is installed, routing is injected at prompt time via `scripts/codex_agent.sh`.
 
 ## Required Artifacts Per Task
 

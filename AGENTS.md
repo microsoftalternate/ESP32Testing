@@ -23,6 +23,19 @@ This repository supports role-based collaboration for coding, debugging, review,
 - Multi-agent flow: `agents/WORKFLOW.md`
 - Session planning: `agents/SESSION_TEMPLATE.md`
 - Cross-agent handoff: `agents/HANDOFF_TEMPLATE.md`
+- System auto invocation: `agents/SYSTEM_AUTORUN.md`
+
+## Auto Invocation
+
+To auto-route prompts through agent workflow when running `codex` in this repository:
+
+1. Run `./scripts/install_agent_hooks.sh`
+2. Run `source ~/.bashrc`
+
+After install:
+
+- `codex` is auto-routed in this repo
+- `codex_raw` bypasses routing
 
 ## Standard of Evidence
 
