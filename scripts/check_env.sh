@@ -25,6 +25,20 @@ check_cmd() {
   return 0
 }
 
+check_any_cmd() {
+  local label="$1"
+  shift
+  local cmd
+  for cmd in "$@"; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      printf "[OK] %s -> %s (%s)\n" "$label" "$(command -v "$cmd")" "$cmd"
+      return 0
+    fi
+  done
+  printf "[MISSING] %s (required)\n" "$label"
+  return 1
+}
+
 check_python_module() {
   local module="$1"
   local required="${2:-yes}"
@@ -53,9 +67,32 @@ check_cmd bash || status=1
 check_cmd python3 || status=1
 check_cmd pip3 || status=1
 
+print_header "ESP-IDF Activation"
+IDF_EXPORT="${HOME}/esp/esp-idf/export.sh"
+if [[ -f "$IDF_EXPORT" ]]; then
+  set +e
+  # shellcheck disable=SC1090
+  source "$IDF_EXPORT" >/tmp/idf_export.log 2>&1
+  export_status=$?
+  set -e
+  if [[ $export_status -eq 0 ]] && ! rg -q "ERROR: Activation script failed|ensurepip|No module named 'rich'" /tmp/idf_export.log 2>/dev/null; then
+    echo "[OK] sourced ${IDF_EXPORT}"
+  else
+    echo "[MISSING] unable to activate ESP-IDF via ${IDF_EXPORT}"
+    tail -n 8 /tmp/idf_export.log || true
+    if rg -q "ensurepip|python3\\.12-venv|No module named 'rich'" /tmp/idf_export.log 2>/dev/null; then
+      echo "Hint: install missing host Python packages (typically: sudo apt install -y python3.12-venv python3-pip)"
+    fi
+    status=1
+  fi
+else
+  echo "[MISSING] ${IDF_EXPORT} not found"
+  status=1
+fi
+
 print_header "ESP Toolchains"
 check_cmd idf.py || status=1
-check_cmd xtensa-esp32-elf-gcc || status=1
+check_any_cmd xtensa-esp-compiler xtensa-esp-elf-gcc xtensa-esp32-elf-gcc || status=1
 check_cmd riscv32-esp-elf-gcc optional || true
 
 print_header "Debug and Flash"

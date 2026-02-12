@@ -37,7 +37,7 @@ print_note() {
 print_note "Step 1: Install host packages"
 run_cmd sudo apt-get update
 run_cmd sudo apt-get install -y \
-  git curl wget flex bison gperf python3 python3-venv python3-pip \
+  git curl wget flex bison gperf python3 python3-venv python3.12-venv python3-pip \
   cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
 
 print_note "Step 2: Clone ESP-IDF"

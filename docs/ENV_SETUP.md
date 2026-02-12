@@ -39,6 +39,12 @@ source ~/esp/esp-idf/export.sh
 ./scripts/check_env.sh
 ```
 
+If setup fails with `ensurepip is not available` or `No module named 'rich'`, install missing host Python packages:
+
+```bash
+sudo apt-get install -y python3.12-venv python3-pip
+```
+
 The check validates:
 - core host tools
 - ESP-IDF CLI and compilers

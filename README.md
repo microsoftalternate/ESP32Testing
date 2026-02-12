@@ -35,7 +35,7 @@ Detailed setup notes: `docs/ENV_SETUP.md`
 
 At the time of setup validation, core ESP tools were missing from PATH:
 - `idf.py`
-- `xtensa-esp32-elf-gcc`
+- ESP-IDF Python environment (`ensurepip` / `python3.12-venv`)
 - `openocd`
 - `pip3`/Python package tooling
 
