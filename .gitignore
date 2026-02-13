@@ -8,6 +8,7 @@ build/
 .sdkconfig.old
 .vscode/
 .pio/
+arduino/**/build*/
 
 # Python cache artifacts
 __pycache__/
