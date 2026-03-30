@@ -4,6 +4,7 @@
 #include <BLE2902.h>
 #include <BLESecurity.h>
 #include <esp_gap_ble_api.h>
+#include <esp_system.h>
 #include <stdlib.h>
 
 static const char* DEVICE_NAME = "ESP32-BLE-ECHO";
@@ -17,6 +18,9 @@ static const int RX_LED_PIN = LED_BUILTIN;
 static const size_t MAX_RX_LINE = 1024;
 static bool g_deviceConnected = false;
 static uint32_t g_lastAdvKickMs = 0;
+static bool g_restartAdvertisingRequested = false;
+static uint32_t g_restartAdvertisingAtMs = 0;
+static bool g_clearBondsRequested = false;
 
 BLECharacteristic* txCharacteristic = nullptr;
 String rxLineBuffer;
@@ -28,6 +32,26 @@ void blinkRxLed(uint8_t times = 2, uint16_t onMs = 80, uint16_t offMs = 80) {
     digitalWrite(RX_LED_PIN, LOW);
     delay(offMs);
   }
+}
+
+const char* resetReasonLabel(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "POWERON";
+    case ESP_RST_SW: return "SW";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INT_WDT";
+    case ESP_RST_TASK_WDT: return "TASK_WDT";
+    case ESP_RST_WDT: return "WDT";
+    case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    case ESP_RST_SDIO: return "SDIO";
+    default: return "UNKNOWN";
+  }
+}
+
+void requestAdvertisingRestart(uint32_t delayMs = 200) {
+  g_restartAdvertisingRequested = true;
+  g_restartAdvertisingAtMs = millis() + delayMs;
 }
 
 void clearAllBonds() {
@@ -50,10 +74,9 @@ void clearAllBonds() {
 class SecurityCallbacks : public BLESecurityCallbacks {
   void onAuthenticationComplete(esp_ble_auth_cmpl_t desc) override {
     if (!desc.success) {
-      Serial.printf("BLE auth failed (0x%02x); clearing stale bonds\n", desc.fail_reason);
-      clearAllBonds();
-      BLEDevice::startAdvertising();
-      g_lastAdvKickMs = millis();
+      Serial.printf("BLE auth failed (0x%02x); scheduling bond clear and advertising restart\n", desc.fail_reason);
+      g_clearBondsRequested = true;
+      requestAdvertisingRestart(300);
     } else {
       Serial.println("BLE auth success");
     }
@@ -68,10 +91,8 @@ class ServerCallbacks : public BLEServerCallbacks {
 
   void onDisconnect(BLEServer* server) override {
     g_deviceConnected = false;
-    Serial.println("BLE disconnected");
-    server->getAdvertising()->start();
-    g_lastAdvKickMs = millis();
-    Serial.println("BLE advertising restarted");
+    Serial.println("BLE disconnected; scheduling advertising restart");
+    requestAdvertisingRestart(250);
   }
 };
 
@@ -118,6 +139,7 @@ void setup() {
   pinMode(RX_LED_PIN, OUTPUT);
   digitalWrite(RX_LED_PIN, LOW);
   Serial.println("Starting BLE UART Echo...");
+  Serial.printf("Reset reason: %s\n", resetReasonLabel(esp_reset_reason()));
 
   BLEDevice::init(DEVICE_NAME);
   BLEServer* server = BLEDevice::createServer();
@@ -161,6 +183,19 @@ void setup() {
 }
 
 void loop() {
+  if (g_clearBondsRequested) {
+    g_clearBondsRequested = false;
+    Serial.println("Clearing stored BLE bonds");
+    clearAllBonds();
+  }
+
+  if (!g_deviceConnected && g_restartAdvertisingRequested && millis() >= g_restartAdvertisingAtMs) {
+    g_restartAdvertisingRequested = false;
+    BLEDevice::startAdvertising();
+    g_lastAdvKickMs = millis();
+    Serial.println("BLE advertising restarted");
+  }
+
   if (!g_deviceConnected && (millis() - g_lastAdvKickMs) > 15000) {
     BLEDevice::startAdvertising();
     g_lastAdvKickMs = millis();
