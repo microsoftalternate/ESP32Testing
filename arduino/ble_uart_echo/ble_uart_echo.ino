@@ -13,6 +13,8 @@ static const char* TX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
 #endif
 static const int RX_LED_PIN = LED_BUILTIN;
 static const size_t MAX_RX_LINE = 1024;
+static bool g_deviceConnected = false;
+static uint32_t g_lastAdvKickMs = 0;
 
 BLECharacteristic* txCharacteristic = nullptr;
 String rxLineBuffer;
@@ -28,12 +30,15 @@ void blinkRxLed(uint8_t times = 2, uint16_t onMs = 80, uint16_t offMs = 80) {
 
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
+    g_deviceConnected = true;
     Serial.println("BLE connected");
   }
 
   void onDisconnect(BLEServer* server) override {
+    g_deviceConnected = false;
     Serial.println("BLE disconnected");
     server->getAdvertising()->start();
+    g_lastAdvKickMs = millis();
     Serial.println("BLE advertising restarted");
   }
 };
@@ -111,7 +116,10 @@ void setup() {
   BLEAdvertising* advertising = server->getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID);
   advertising->setScanResponse(true);
+  advertising->setMinPreferred(0x06);
+  advertising->setMinPreferred(0x12);
   advertising->start();
+  g_lastAdvKickMs = millis();
 
   Serial.print("BLE ready as ");
   Serial.println(DEVICE_NAME);
@@ -120,5 +128,9 @@ void setup() {
 }
 
 void loop() {
+  if (!g_deviceConnected && (millis() - g_lastAdvKickMs) > 15000) {
+    BLEDevice::startAdvertising();
+    g_lastAdvKickMs = millis();
+  }
   delay(50);
 }
