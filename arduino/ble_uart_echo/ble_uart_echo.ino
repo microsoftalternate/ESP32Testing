@@ -2,6 +2,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <BLESecurity.h>
 
 static const char* DEVICE_NAME = "ESP32-BLE-ECHO";
 static const char* SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -91,6 +92,7 @@ void setup() {
     TX_UUID,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ
   );
+  txCharacteristic->setAccessPermissions(ESP_GATT_PERM_READ_ENCRYPTED);
   txCharacteristic->addDescriptor(new BLE2902());
   txCharacteristic->setValue("ready");
 
@@ -98,7 +100,12 @@ void setup() {
     RX_UUID,
     BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
   );
+  rxCharacteristic->setAccessPermissions(ESP_GATT_PERM_WRITE_ENCRYPTED);
   rxCharacteristic->setCallbacks(new RxCallbacks());
+
+  BLESecurity::setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND);
+  BLESecurity::setCapability(ESP_IO_CAP_NONE);
+  BLESecurity::setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
 
   service->start();
   BLEAdvertising* advertising = server->getAdvertising();
@@ -108,6 +115,7 @@ void setup() {
 
   Serial.print("BLE ready as ");
   Serial.println(DEVICE_NAME);
+  Serial.println("Bonding required for secure writes.");
   Serial.println("Waiting for app writes...");
 }
 
