@@ -3,6 +3,8 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <BLESecurity.h>
+#include <esp_gap_ble_api.h>
+#include <stdlib.h>
 
 static const char* DEVICE_NAME = "ESP32-BLE-ECHO";
 static const char* SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -27,6 +29,36 @@ void blinkRxLed(uint8_t times = 2, uint16_t onMs = 80, uint16_t offMs = 80) {
     delay(offMs);
   }
 }
+
+void clearAllBonds() {
+  int devNum = esp_ble_get_bond_device_num();
+  if (devNum <= 0) {
+    return;
+  }
+  esp_ble_bond_dev_t* devList = (esp_ble_bond_dev_t*)malloc(sizeof(esp_ble_bond_dev_t) * devNum);
+  if (devList == nullptr) {
+    return;
+  }
+  if (esp_ble_get_bond_device_list(&devNum, devList) == ESP_OK) {
+    for (int i = 0; i < devNum; ++i) {
+      esp_ble_remove_bond_device(devList[i].bd_addr);
+    }
+  }
+  free(devList);
+}
+
+class SecurityCallbacks : public BLESecurityCallbacks {
+  void onAuthenticationComplete(esp_ble_auth_cmpl_t desc) override {
+    if (!desc.success) {
+      Serial.printf("BLE auth failed (0x%02x); clearing stale bonds\n", desc.fail_reason);
+      clearAllBonds();
+      BLEDevice::startAdvertising();
+      g_lastAdvKickMs = millis();
+    } else {
+      Serial.println("BLE auth success");
+    }
+  }
+};
 
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
@@ -111,6 +143,7 @@ void setup() {
   BLESecurity::setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND);
   BLESecurity::setCapability(ESP_IO_CAP_NONE);
   BLESecurity::setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+  BLEDevice::setSecurityCallbacks(new SecurityCallbacks());
 
   service->start();
   BLEAdvertising* advertising = server->getAdvertising();
