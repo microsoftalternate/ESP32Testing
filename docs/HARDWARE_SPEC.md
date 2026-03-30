@@ -6,6 +6,8 @@ This document is the source of truth for hardware used in the BLE relay test flo
 ## Test Scope (Current)
 - Android app sends BLE payload to ESP32.
 - ESP32 prints payload to USB serial monitor at `115200` baud.
+- ESP32 acknowledges each newline-terminated BLE command back to the phone on TX notify.
+- Android app stores inbound BLE messages in a `Messages` tab and can raise phone notifications.
 
 ## Primary Board
 - MCU: ESP32-WROOM development board (first target)
@@ -22,6 +24,7 @@ This document is the source of truth for hardware used in the BLE relay test flo
 - Baud: `115200`
 - Expected line format:
   - `BLE RX -> <payload>`
+  - `BLE TX -> ACK:<payload>`
 
 ## Wiring / Power
 - For BLE echo test: no external module wiring required.
@@ -29,6 +32,7 @@ This document is the source of truth for hardware used in the BLE relay test flo
 
 ## Pass / Fail Criteria
 - Pass: Text entered in app appears exactly in ESP32 serial output.
+- Pass: Phone receives `ACK:<payload>` in the app message inbox after each command.
 - Fail: No BLE connection, no write success, or serial output mismatch.
 
 ## Next Phase (LoRa Relay)

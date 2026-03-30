@@ -25,6 +25,16 @@ static bool g_clearBondsRequested = false;
 BLECharacteristic* txCharacteristic = nullptr;
 String rxLineBuffer;
 
+void sendTxMessage(const String& message) {
+  if (txCharacteristic == nullptr || !g_deviceConnected || message.isEmpty()) {
+    return;
+  }
+  txCharacteristic->setValue((uint8_t*)message.c_str(), message.length());
+  txCharacteristic->notify();
+  Serial.print("BLE TX -> ");
+  Serial.println(message);
+}
+
 void blinkRxLed(uint8_t times = 2, uint16_t onMs = 80, uint16_t offMs = 80) {
   for (uint8_t i = 0; i < times; ++i) {
     digitalWrite(RX_LED_PIN, HIGH);
@@ -113,6 +123,7 @@ class RxCallbacks : public BLECharacteristicCallbacks {
           Serial.print("BLE RX -> ");
           Serial.println(rxLineBuffer);
           blinkRxLed();
+          sendTxMessage("ACK:" + rxLineBuffer);
           rxLineBuffer = "";
         }
         continue;
@@ -122,13 +133,9 @@ class RxCallbacks : public BLECharacteristicCallbacks {
         Serial.print("BLE RX (truncated) -> ");
         Serial.println(rxLineBuffer);
         blinkRxLed();
+        sendTxMessage("ACK:TRUNCATED");
         rxLineBuffer = "";
       }
-    }
-
-    if (txCharacteristic != nullptr) {
-      txCharacteristic->setValue((uint8_t*)value.c_str(), value.length());
-      txCharacteristic->notify();
     }
   }
 };
